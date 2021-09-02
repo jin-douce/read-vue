@@ -1,4 +1,4 @@
-const resUrl = "http://10.5.171.4:9000";
+const resUrl = "http://192.168.1.5:9000";
 const category = [
   "Biomedicine",
   "BusinessandManagement",

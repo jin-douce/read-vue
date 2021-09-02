@@ -2,363 +2,193 @@ const express = require("express");
 const mysql = require("mysql");
 const constant = require("./const");
 const cors = require("cors");
+const connect = require('./connect');
 
 const app = express();
+// cors是expresss的一个第三方中间件，解决跨域（简单请求）
 app.use(cors());
+app.use(express.json()); //数据JSON类型
+app.use(express.urlencoded({
+    extended: false
+})); //解析post请求数据
+
 
 app.get("/", (req, res) => {
   res.send(new Date().toDateString());
 });
 
-function connect() {
-  return mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "root",
-    database: "ebook",
-  });
-}
 
-
-function randomArray(n, l) {
-  let rnd = [];
-  for (let i = 0; i < n; i++) {
-    rnd.push(Math.floor(Math.random() * l));
-  }
-  return rnd;
-}
-
-function createData(results, key) {
-  return handleData(results[key]);
-}
-
-function handleData(data) {
-  if (!data.cover.startsWith("http://")) {
-    data["cover"] = `${constant.resUrl}/img${data.cover}`;
-  }
-  data["selected"] = false;
-  data["private"] = false;
-  data["cache"] = false;
-  data["haveRead"] = 0;
-  return data;
-}
-function createGuessYouLike(data) {
-  const n = parseInt(randomArray(1, 3)) + 1;
-  data["type"] = n;
-  switch (n) {
-    case 1:
-      data["result"] =
-        data.id % 2 === 0 ? "《Executing Magic》" : "《Elements Of Robotics》";
-      break;
-    case 2:
-      data["result"] =
-        data.id % 2 === 0
-          ? "《Improving Psychiatric Care》"
-          : "《Programming Languages》";
-      break;
-    case 3:
-      data["result"] = "《Living with Disfigurement》";
-      data["percent"] = data.id % 2 === 0 ? "92%" : "97%";
-      break;
-  }
-  return data;
-}
-
-function createRecommendData(data) {
-  data["readers"] = Math.floor((data.id / 2) * randomArray(1, 100));
-  return data;
-}
-
-function createCategoryIds(n) {
-  const arr = [];
-  constant.category.forEach((item, index) => {
-    arr.push(index + 1);
-  });
-  const result = [];
-  for (let i = 0; i < n; i++) {
-    // 获取的随机数不能重复,不断减小
-    const ran = Math.floor(Math.random() * (arr.length - i));
-    // 获取分类对应的序号
-    result.push(arr[ran]);
-    // 将已经获取的随机数取代，用最后一位数
-    arr[ran] = arr[arr.length - i - 1];
-  }
-  return result;
-}
-
-function createCategoryData(data) {
-  const categoryIds = createCategoryIds(6);
-  const result = [];
-  categoryIds.forEach((categoryId) => {
-    const subList = data
-      .filter((item) => item.category === categoryId)
-      .slice(0, 4);
-    subList.map((item) => {
-      return handleData(item);
-    });
-    result.push({
-      category: categoryId,
-      list: subList,
-    });
-  });
-  return result.filter((item) => item.list.length === 4);
-}
-
-app.get("/book/home", (req, res) => {
-  const conn = connect();
-  conn.query('select * from book where cover!=\'\'', (err, results) => {
-    const length = results.length;
-    const guessYouLike = [];
-    const banner = constant.resUrl+"/home_banner.jpeg";
-    const recommend = [];
-    const featured = [];
-    const random = [];
-    const categoryList = createCategoryData(results);
-    const categories = [
-      {
-        category: 1,
-        num: 56,
-        img1: constant.resUrl + '/cover/cs/A978-3-319-62533-1_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/cs/A978-3-319-89366-2_CoverFigure.jpg'
-      },
-      {
-        category: 2,
-        num: 51,
-        img1: constant.resUrl + '/cover/ss/A978-3-319-61291-1_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/ss/A978-3-319-69299-9_CoverFigure.jpg'
-      },
-      {
-        category: 3,
-        num: 32,
-        img1: constant.resUrl + '/cover/eco/A978-3-319-69772-7_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/eco/A978-3-319-76222-7_CoverFigure.jpg'
-      },
-      {
-        category: 4,
-        num: 60,
-        img1: constant.resUrl + '/cover/edu/A978-981-13-0194-0_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/edu/978-3-319-72170-5_CoverFigure.jpg'
-      },
-      {
-        category: 5,
-        num: 23,
-        img1: constant.resUrl + '/cover/eng/A978-3-319-39889-1_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/eng/A978-3-319-00026-8_CoverFigure.jpg'
-      },
-      {
-        category: 6,
-        num: 42,
-        img1: constant.resUrl + '/cover/env/A978-3-319-12039-3_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/env/A978-4-431-54340-4_CoverFigure.jpg'
-      },
-      {
-        category: 7,
-        num: 7,
-        img1: constant.resUrl + '/cover/geo/A978-3-319-56091-5_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/geo/978-3-319-75593-9_CoverFigure.jpg'
-      },
-      {
-        category: 8,
-        num: 18,
-        img1: constant.resUrl + '/cover/his/978-3-319-65244-3_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/his/978-3-319-92964-4_CoverFigure.jpg'
-      },
-      {
-        category: 9,
-        num: 13,
-        img1: constant.resUrl + '/cover/law/2015_Book_ProtectingTheRightsOfPeopleWit.jpeg',
-        img2: constant.resUrl + '/cover/law/2016_Book_ReconsideringConstitutionalFor.jpeg'
-      },
-      {
-        category: 10,
-        num: 24,
-        img1: constant.resUrl + '/cover/ls/A978-3-319-27288-7_CoverFigure.jpg',
-        img2: constant.resUrl + '/cover/ls/A978-1-4939-3743-1_CoverFigure.jpg'
-      },
-      {
-        category: 11,
-        num: 6,
-        img1: constant.resUrl + '/cover/lit/2015_humanities.jpg',
-        img2: constant.resUrl + '/cover/lit/A978-3-319-44388-1_CoverFigure_HTML.jpg'
-      },
-      {
-        category: 12,
-        num: 14,
-        img1: constant.resUrl + '/cover/bio/2016_Book_ATimeForMetabolismAndHormones.jpeg',
-        img2: constant.resUrl + '/cover/bio/2017_Book_SnowSportsTraumaAndSafety.jpeg'
-      },
-      {
-        category: 13,
-        num: 16,
-        img1: constant.resUrl + '/cover/bm/2017_Book_FashionFigures.jpeg',
-        img2: constant.resUrl + '/cover/bm/2018_Book_HeterogeneityHighPerformanceCo.jpeg'
-      },
-      {
-        category: 14,
-        num: 16,
-        img1: constant.resUrl + '/cover/es/2017_Book_AdvancingCultureOfLivingWithLa.jpeg',
-        img2: constant.resUrl + '/cover/es/2017_Book_ChinaSGasDevelopmentStrategies.jpeg'
-      },
-      {
-        category: 15,
-        num: 2,
-        img1: constant.resUrl + '/cover/ms/2018_Book_ProceedingsOfTheScientific-Pra.jpeg',
-        img2: constant.resUrl + '/cover/ms/2018_Book_ProceedingsOfTheScientific-Pra.jpeg'
-      },
-      {
-        category: 16,
-        num: 9,
-        img1: constant.resUrl + '/cover/mat/2016_Book_AdvancesInDiscreteDifferential.jpeg',
-        img2: constant.resUrl + '/cover/mat/2016_Book_ComputingCharacterizationsOfDr.jpeg'
-      },
-      {
-        category: 17,
-        num: 20,
-        img1: constant.resUrl + '/cover/map/2013_Book_TheSouthTexasHealthStatusRevie.jpeg',
-        img2: constant.resUrl + '/cover/map/2016_Book_SecondaryAnalysisOfElectronicH.jpeg'
-      },
-      {
-        category: 18,
-        num: 16,
-        img1: constant.resUrl + '/cover/phi/2015_Book_TheOnlifeManifesto.jpeg',
-        img2: constant.resUrl + '/cover/phi/2017_Book_Anti-VivisectionAndTheProfessi.jpeg'
-      },
-      {
-        category: 19,
-        num: 10,
-        img1: constant.resUrl + '/cover/phy/2016_Book_OpticsInOurTime.jpeg',
-        img2: constant.resUrl + '/cover/phy/2017_Book_InterferometryAndSynthesisInRa.jpeg'
-      },
-      {
-        category: 20,
-        num: 26,
-        img1: constant.resUrl + '/cover/psa/2016_Book_EnvironmentalGovernanceInLatin.jpeg',
-        img2: constant.resUrl + '/cover/psa/2017_Book_RisingPowersAndPeacebuilding.jpeg'
-      },
-      {
-        category: 21,
-        num: 3,
-        img1: constant.resUrl + '/cover/psy/2015_Book_PromotingSocialDialogueInEurop.jpeg',
-        img2: constant.resUrl + '/cover/psy/2015_Book_RethinkingInterdisciplinarityA.jpeg'
-      },
-      {
-        category: 22,
-        num: 1,
-        img1: constant.resUrl + '/cover/sta/2013_Book_ShipAndOffshoreStructureDesign.jpeg',
-        img2: constant.resUrl + '/cover/sta/2013_Book_ShipAndOffshoreStructureDesign.jpeg'
-      }
-    ]
-    randomArray(9, length).forEach((key) => {
-      guessYouLike.push(createGuessYouLike(createData(results, key)));
-    });
-    randomArray(3, length).forEach((key) => {
-      recommend.push(createRecommendData(createData(results, key)));
-    });
-    randomArray(6, length).forEach((key) => {
-      featured.push(createData(results, key));
-    });
-    randomArray(1, length).forEach((key) => {
-      random.push(createData(results, key));
-    });
-    res.json({
-      guessYouLike,
-      banner,
-      recommend,
-      featured,
-      categoryList,
-      categories,
-      random,
-    });
-    conn.end();
-  });
+app.get('/booklist', (req, res) => {
+    const id = req.query.id;
+    connect(id ? `SELECT * FROM booklist WHERE id=${id};` : `SELECT * FROM booklist;`, function (err, results, fields) {
+        if (err) throw  err;
+        id ? res.send(results[0]) : res.send(results)
+    })
 });
 
-app.get('/book/detail', (req, res) => {
-  const conn = connect()
-  const fileName = req.query.fileName
-  console.log(fileName)
-  const sql = `select * from book where fileName='${fileName}'`
-  conn.query(sql, (err, results) => {
-    if (err) {
-      res.json({
-        error_code: 3,
-        msg: '电子书详情获取失败'
-      })
-    } else {
-      if (results && results.length === 0) {
-        res.json({
-          error_code: 4,
-          msg: '电子书详情获取失败'
-        })
-      } else {
-        const book = handleData(results[0])
-        res.json({
-          error_code: 0,
-          msg: '获取成功',
-          data: book
-        })
-      }
-    }
-    conn.end()
-  })
+app.get('/book', (req, res) => {
+    const book = req.query.book;
+    const bookId = req.query.id;
+    connect(`SELECT * FROM book${book} WHERE id=${bookId}`, function (err, results) {
+        if (err) throw err;
+        res.send(results[0])
+    })
 })
-
-app.get('/book/list', (req, res) => {
-  const conn = connect()
-  conn.query('select * from book where cover!=\'\'',
-    (err, results) => {
-      if (err) {
-        res.json({
-          error_code: 1,
-          msg: '获取失败'
-        })
-      } else {
-        results.map(item => handleData(item))
-        const data = {}
-        constant.category.forEach(categoryText => {
-          data[categoryText] = results.filter(item => item.categoryText === categoryText)
-        })
-        res.json({
-          error_code: 0,
-          msg: '获取成功',
-          data: data,
-          total: results.length
-        })
-      }
-      conn.end()
+app.get('/booktitles', (req, res) => {
+    const id = req.query.id;
+    connect(`SELECT * FROM booktitles WHERE id=${id};`, function (err, results) {
+        if (err) throw  err;
+        res.send(results[0]);
     })
 })
 
-app.get('/book/flat-list', (req, res) => {
-  const conn = connect()
-  conn.query('select * from book where cover!=\'\'',
-    (err, results) => {
-      if (err) {
-        res.json({
-          error_code: 1,
-          msg: '获取失败'
-        })
-      } else {
-        results.map(item => handleData(item))
-        res.json({
-          error_code: 0,
-          msg: '获取成功',
-          data: results,
-          total: results.length
-        })
-      }
-      conn.end()
+app.get('/type', (req, res) => {
+    const type = req.query.type;
+    connect(`SELECT * FROM booklist WHERE type='${type}'`, function (err, results) {
+        if (err) throw err;
+        res.send(results)
     })
 })
 
+app.get('/search', (req, res) => {
+    const keyword = req.query.keyword;
+    connect(`SELECT * FROM booklist WHERE name LIKE "%${keyword}%" OR author LIKE "%${keyword}%";`, function (err, results) {
+        if (err) throw err;
+        res.send(results);
+    })
+})
+
+// 书架
+// app.get('/shelf', (req, res) => {
+//     const userId = req.query.userId;
+//     console.log(req.query.userId);
+//     connect(`SELECT * FROM bookshelf WHERE userid=${userId}`, function (err, results) {
+//         if (err) throw err;
+//         res.send(results)
+//     })
+// })
 app.get('/book/shelf', (req, res) => {
-  res.json({
-    bookList: []
+    res.json({
+      bookList: []
+    })
+  })
+
+app.get('/checkShelf',(req, res) => {
+    const userId = req.query.userId;
+    const bookId = req.query.bookId;
+    connect(`SELECT * FROM bookshelf WHERE userid=${userId} AND bookid=${bookId}`, function (err, results, fileds) {
+        if (err) throw err;
+        if (results.length === 1) {
+            res.send(true)
+        }
+        else {
+            res.send(false)
+        }
+    })
+})
+
+// post
+app.post('/login', (req, res) => {
+//   console.log(req.body);
+  const user = req.body.user;
+  const pwd = req.body.pwd;
+  
+  connect(`SELECT * FROM users WHERE user_name="${user}" AND password="${pwd}";`, function (err, results) {
+      if (err) throw err;
+      if(results.length === 1) {
+          connect(`SELECT * FROM user_info WHERE user="${user}";`, function (err, results) {
+              if (err) throw err;
+              if(results.length === 1) {
+                  res.send(results[0])
+              }
+              else {
+                  res.send(false)
+              }
+          })
+      }
+      else {
+          res.send(false)
+      }
   })
 })
+
+app.post('/register', (req, res) => {
+    const user = req.body.user;
+    const pwd = req.body.pwd;
+    const email = req.body.email;
+
+    connect(`SELECT * FROM users WHERE user_name="${user}";`, function (err, results, fileds) {
+        if (err) throw err;
+        if (results.length === 1) {
+            res.send({
+                insertStatus: 2
+            })
+        } else {
+            let id = new Date().getTime();
+            let sql = `INSERT INTO \`books\`.\`users\`(\`user_id\`, \`user_name\`, \`password\`, \`email\`) VALUES ('${id}', '${user}', '${pwd}', '${email}');`
+            connect(sql, function (err, results, fileds) {
+                if (err) throw err;
+                if (results.affectedRows === 1) {
+                    let sql2 = `INSERT INTO \`books\`.\`user_info\`(\`id\`, \`user\`, \`font_size\`, \`style_model\`, \`night\`, \`head_img\`) VALUES ('${id}', '${user}', 16, 'style1', 'false', 
+                    'https://tse2-mm.cn.bing.net/th/id/OIP-C.hvXT1R0c0aPWrdz-aRThJwAAAA?w=200&h=200&c=7&r=0&o=5&dpr=1.5&pid=1.7');`;
+                    connect(sql2, function (err, results, fileds) {
+                        if (err) throw err;
+                        if (results.affectedRows === 1) {
+                            connect(`SELECT * FROM user_info WHERE user="${user}";`, function (err, results) {
+                                if (err) throw err;
+                                if (results.length === 1) {
+                                    res.send({
+                                        insertStatus: 1,
+                                        userInfo: results[0]
+                                    })
+                                } else {
+                                    res.send({
+                                        insertStatus: 0
+                                    })
+                                }
+                            })
+                        } else {
+                            res.send({
+                                insertStatus: 0
+                            })
+                        }
+                    })
+                } else {
+                    res.send({
+                        insertStatus: 0
+                    })
+                }
+            })
+        }
+    })
+})
+
+// 加入书架
+app.post('/inShelf',(req, res) => {
+    const userId = req.body.userId;
+    const sql = `INSERT INTO \`books\`.\`bookshelf\`(\`userid\`, \`bookid\`, \`bookname\`, \`author\`, \`images\`, \`wordcount\`, \`type\`, \`intro\`, \`serialize\`) 
+    VALUES ('${userId}','${req.body['userInfo[id]']}','${req.body['userInfo[name]']}','${req.body['userInfo[author]']}','${req.body['userInfo[images]']}','${req.body['userInfo[wordcount]']}','${req.body['userInfo[type]']}','${req.body['userInfo[intro]']}','${req.body['userInfo[serialize]']}');`
+
+    connect(sql, function (err, results) {
+        if (err) throw err;
+        if (results.affectedRows === 1) {
+            res.send(true)
+        } else {
+            res.send(false)
+        }
+    })
+
+})
+
+
+
 
 const server = app.listen(3000, () => {
   const host = server.address().address;
   const port = server.address().port;
   console.log("server is listening at http://%s:%s", host, port);
 });
+
+
+
+
