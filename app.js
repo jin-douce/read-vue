@@ -1,6 +1,5 @@
 const express = require("express");
 const mysql = require("mysql");
-const constant = require("./const");
 const cors = require("cors");
 const connect = require('./connect');
 
