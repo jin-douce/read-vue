@@ -57,15 +57,15 @@ app.get('/search', (req, res) => {
     })
 })
 
-// 书架
-// app.get('/shelf', (req, res) => {
-//     const userId = req.query.userId;
-//     console.log(req.query.userId);
-//     connect(`SELECT * FROM bookshelf WHERE userid=${userId}`, function (err, results) {
-//         if (err) throw err;
-//         res.send(results)
-//     })
-// })
+
+app.get('/shelf', (req, res) => {
+    const userId = req.query.userId;
+    console.log(req.query.userId);
+    connect(`SELECT * FROM bookshelf WHERE userid=${userId}`, function (err, results) {
+        if (err) throw err;
+        res.send(results)
+    })
+})
 app.get('/book/shelf', (req, res) => {
     res.json({
       bookList: []
